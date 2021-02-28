@@ -6,14 +6,14 @@ class TickerData:
     Used to create list of ticker symbols to extract in reddit data
 
         Args:
-            csv_path (str): path of csv file containing ticker info
+            csv_path (list): list of path of csv files containing ticker info
             exception_list (list): list of ticker symbols to exclude
     """
 
-    def __init__(self, csv_path: str, exception_list: list):
+    def __init__(self, csv_path_list: list, exception_list: list):
         """Constructor method"""
 
-        self.csv_path = csv_path
+        self.csv_path_list = csv_path_list
         self.exception_list = exception_list
 
     def create_data(self) -> list:
@@ -25,25 +25,30 @@ class TickerData:
         Returns:
             list: list of ticker symbols
         """
-        ticker_list = self.read_ticker_file(self.csv_path, "Symbol")
+        ticker_list = self.read_ticker_file(self.csv_path_list, "Symbol")
         ticker_list = self.remove_exceptions(ticker_list, self.exception_list)
         ticker_list = self.create_variation(ticker_list)
 
         return ticker_list
 
-    def read_ticker_file(self, csv_path: str, ticker_column_name: str) -> list:
+    def read_ticker_file(self, csv_path_list: list, ticker_column_name: str) -> list:
         """Read .csv file with path specified.
         Extract list of ticker with name of ticker column
 
         Args:
-            csv_path (str): path of csv file containing ticker info
+            csv_path (list): list of path of csv files containing ticker info
             ticker_column_name (str): name of column containing ticker
 
         Returns:
             list: list of ticker symbols
         """
-        ticker_data = pd.read_csv(csv_path)
-        ticker_list = list(ticker_data[ticker_column_name])
+        ticker_list = []
+        for csv_path in csv_path_list:
+            ticker_data = pd.read_csv(csv_path)
+            ticker_list = ticker_list + list(ticker_data[ticker_column_name])
+
+        # remove duplicates
+        ticker_list = list(set(ticker_list))
 
         return ticker_list
 
@@ -86,8 +91,11 @@ class TickerData:
 if __name__ == "__main__":
     print("ticker_data")
 
-    ticker_path = "data/nasdaq_screener.csv"
-    exception_list = ["TD", "ANY", "CEO"]
-    ticker_data = TickerData(ticker_path, exception_list)
+    nasdaq_path = "data/nasdaq_screener.csv"
+    otc_path = "data/otc_screener.csv"
+    csv_path_list = [nasdaq_path, otc_path]
+    exception_list = ["TD", "ANY", "CEO", "EV"]
+
+    ticker_data = TickerData(csv_path_list, exception_list)
     ticker_list = ticker_data.create_data()
-    print(ticker_list)
+    print(len(ticker_list))
