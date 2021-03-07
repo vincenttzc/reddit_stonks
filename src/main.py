@@ -1,53 +1,35 @@
-import pathlib, re
+import pathlib
 
 import praw
 import pandas as pd
-import yfinance as yf
-from datetime import datetime
 
-import data_preprocess as pp
+from data_extraction.ticker_data import TickerData
+from data_extraction.reddit_data import RedditData
+from model.model import Model
 
-comment_columns = [
-    "submission_title",
-    "submission_id",
-    "comment_author",
-    "comment_body",
-    "comment_datetime",
-    "comment_date",
-    "comment_id",
-    "comment_score",
-]
-submission_columns = [
-    "submission_title",
-    "submission_id",
-    "submission_author",
-    "submission_body",
-    "submission_datetime",
-    "submission_date",
-    "submission_id",
-    "submission_score",
-]
-exception_list = ["TD", "ANY", "CEO"]
+# add into config file
+nasdaq_path = "data/nasdaq_screener.csv"
+otc_path = "data/otc_screener.csv"
+csv_path_list = [nasdaq_path, otc_path]
+exception_list = ["TD", "ANY", "CEO", "EV"]
+subreddits = ["stocks"]
+num_posts = 5
+model_name = "albert-base-v2"
+batch_size = 2
 
+# Prepare data
+ticker_data = TickerData(csv_path_list, exception_list)
+ticker_list = ticker_data.create_data()
 
-BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
+reddit = praw.Reddit("DEFAULT")
+reddit_data = RedditData(reddit, subreddits, num_posts, ticker_list)
+reddit_data = reddit_data.create_data()
+# reddit_data.to_csv("data/reddit_data.csv", index=False)
+print("data shape", reddit_data.shape)
 
-ticker_file_path = BASE_DIR / "data/nasdaq_screener.csv"
-ticker_data = pd.read_csv(ticker_file_path)
-ticker_list = list(ticker_data["Symbol"])
-full_ticker_list = pp.process_ticker_list(ticker_list, exception_list)
-
-
-df_original = pp.save_subreddit("pennystocks", 10)
-df_submission = pp.create_submission_df(
-    reddit_df=df_original, submission_columns=submission_columns
-)
-df_comment = pp.create_comment_df(
-    reddit_df=df_original, comment_columns=comment_columns
-)
-df_combine = pp.combine_submission_comment(df_submission, df_comment)
-df_clean = pp.create_ticker_column(
-    df_combine, "body", "body_ticker", full_ticker_list
-)
-
-print(df_clean.shape)
+# Make prediction
+text = list(reddit_data["body"])
+text = text[:4]
+model = Model(model_name, batch_size)
+preds = model.predict(text)
+print("prediction: ", preds)
