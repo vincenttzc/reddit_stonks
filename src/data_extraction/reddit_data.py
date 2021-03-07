@@ -4,7 +4,7 @@ from datetime import datetime
 import praw
 import pandas as pd
 
-from ticker_data import TickerData
+from .ticker_data import TickerData
 
 
 class RedditData:
